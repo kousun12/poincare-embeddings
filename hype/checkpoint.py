@@ -6,7 +6,6 @@
 # LICENSE file in the root directory of this source tree.
 
 import os
-from os.path import join as pjoin
 import time
 import torch
 

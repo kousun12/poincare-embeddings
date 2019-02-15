@@ -12,9 +12,6 @@ class Manifold(object):
     def __init__(self, *args, **kwargs):
         pass
 
-    def init_weights(self, w, scale=1e-4):
-        w.data.uniform_(-scale, scale)
-
     @staticmethod
     def dim(dim):
         return dim

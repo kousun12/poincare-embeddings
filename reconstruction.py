@@ -11,7 +11,7 @@ import numpy as np
 import torch
 import os
 from hype.lorentz import LorentzManifold
-from hype.euclidean import EuclideanManifold, TranseManifold
+from hype.euclidean import EuclideanManifold
 from hype.poincare import PoincareManifold
 import timeit
 
@@ -19,7 +19,6 @@ import timeit
 MANIFOLDS = {
     'lorentz': LorentzManifold,
     'euclidean': EuclideanManifold,
-    'transe': TranseManifold,
     'poincare': PoincareManifold
 }
 

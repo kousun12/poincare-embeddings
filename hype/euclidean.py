@@ -5,8 +5,8 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
-import torch as th
 from .manifold import Manifold
+import tensorflow as tf
 
 
 class EuclideanManifold(Manifold):
@@ -16,25 +16,24 @@ class EuclideanManifold(Manifold):
         self.max_norm = max_norm
 
     def normalize(self, u):
-        d = u.size(-1)
-        u.view(-1, d).renorm_(2, 0, self.max_norm)
-        return u
+        d = u.shape[-1].value
+        return tf.clip_by_norm(tf.reshape(u, [-1, d]), self.max_norm, axes=0)
 
     def distance(self, u, v):
-        return (u - v).pow(2).sum(dim=-1)
+        return tf.reduce_sum(tf.pow((u - v), 2))
 
-    def pnorm(self, u, dim=-1):
-        return (u * u).sum(dim=dim).sqrt()
+    def pnorm(self, u, dim=None):
+        return tf.sqrt(tf.reduce_sum(u * u, axis=dim))
 
     def rgrad(self, p, d_p):
         return d_p
 
     def expm(self, p, d_p, normalize=False, lr=None, out=None):
         if lr is not None:
-            d_p.mul_(-lr)
+            d_p = d_p * -lr
         if out is None:
             out = p
-        out.add_(d_p)
+        out = out + d_p
         if normalize:
             self.normalize(out)
         return out
@@ -43,20 +42,21 @@ class EuclideanManifold(Manifold):
         return p - d_p
 
     def ptransp(self, p, x, y, v):
-        ix, v_ = v._indices().squeeze(), v._values()
-        return p.index_copy_(0, ix, v_)
+        pass
+        # ix, v_ = v._indices().squeeze(), v._values()
+        # return p.index_copy_(0, ix, v_)
 
-
-class TranseManifold(EuclideanManifold):
-    def __init__(self, dim, *args, **kwargs):
-        super(TranseManifold, self).__init__(*args, **kwargs)
-        self.r = th.nn.Parameter(th.randn(dim).view(1, dim))
-
-    def distance(self, u, v):
-        # batch mode
-        if u.dim() == 3:
-            r = self.r.unsqueeze(0).expand(v.size(0), v.size(1), self.r.size(1))
-        # non batch
-        else:
-            r = self.r.expand(v.size(0), self.r.size(1))
-        return (u - v + r).pow(2).sum(dim=-1)
+# TODO - recreate this
+# class TranseManifold(EuclideanManifold):
+#     def __init__(self, dim, *args, **kwargs):
+#         super(TranseManifold, self).__init__(*args, **kwargs)
+#         self.r = th.nn.Parameter(th.randn(dim).view(1, dim))
+#
+#     def distance(self, u, v):
+#         # batch mode
+#         if u.dim() == 3:
+#             r = self.r.unsqueeze(0).expand(v.size(0), v.size(1), self.r.size(1))
+#         # non batch
+#         else:
+#             r = self.r.expand(v.size(0), self.r.size(1))
+#         return (u - v + r).pow(2).sum(dim=-1)

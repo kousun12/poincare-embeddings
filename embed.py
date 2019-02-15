@@ -5,7 +5,7 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
-import torch as th
+import tensorflow as tf
 import numpy as np
 import logging
 import argparse
@@ -13,20 +13,15 @@ from hype.sn import Embedding, initialize
 from hype.adjacency_matrix_dataset import AdjacencyDataset
 from hype import train
 from hype.graph import load_adjacency_matrix, load_edge_list, eval_reconstruction
-from hype.checkpoint import LocalCheckpoint
-from hype.rsgd import RiemannianSGD
+from hype.rsgd import RSGDTF
 from hype.lorentz import LorentzManifold
 from hype.euclidean import EuclideanManifold
 from hype.poincare import PoincareManifold
 import sys
 import json
-import torch.multiprocessing as mp
-import shutil
 
-
-th.manual_seed(42)
+tf.random.set_random_seed(42)
 np.random.seed(42)
-
 
 MANIFOLDS = {
     'lorentz': LorentzManifold,
@@ -35,33 +30,33 @@ MANIFOLDS = {
 }
 
 
-def async_eval(adj, q, logQ, opt):
-    manifold = MANIFOLDS[opt.manifold]()
-    while True:
-        temp = q.get()
-        if temp is None:
-            return
-
-        if not q.empty():
-            continue
-
-        epoch, elapsed, loss, pth = temp
-        chkpnt = th.load(pth, map_location='cpu')
-        lt = chkpnt['embeddings']
-
-        meanrank, maprank = eval_reconstruction(adj, lt, manifold.distance)
-        sqnorms = manifold.pnorm(lt)
-        lmsg = {
-            'epoch': epoch,
-            'elapsed': elapsed,
-            'loss': loss,
-            'sqnorm_min': sqnorms.min().item(),
-            'sqnorm_avg': sqnorms.mean().item(),
-            'sqnorm_max': sqnorms.max().item(),
-            'mean_rank': meanrank,
-            'map_rank': maprank
-        }
-        logQ.put((lmsg, pth))
+# def async_eval(adj, q, logQ, opt):
+#     manifold = MANIFOLDS[opt.manifold]()
+#     while True:
+#         temp = q.get()
+#         if temp is None:
+#             return
+#
+#         if not q.empty():
+#             continue
+#
+#         epoch, elapsed, loss, pth = temp
+#         chkpnt = th.load(pth, map_location='cpu')
+#         lt = chkpnt['embeddings']
+#
+#         meanrank, maprank = eval_reconstruction(adj, lt, manifold.distance)
+#         sqnorms = manifold.pnorm(lt)
+#         lmsg = {
+#             'epoch': epoch,
+#             'elapsed': elapsed,
+#             'loss': loss,
+#             'sqnorm_min': sqnorms.min().item(),
+#             'sqnorm_avg': sqnorms.mean().item(),
+#             'sqnorm_max': sqnorms.max().item(),
+#             'mean_rank': meanrank,
+#             'map_rank': maprank
+#         }
+#         logQ.put((lmsg, pth))
 
 
 # Adapated from:
@@ -83,7 +78,7 @@ def main():
                         help='Dataset identifier')
     parser.add_argument('-dim', type=int, default=20,
                         help='Embedding dimension')
-    parser.add_argument('-manifold', type=str, default='lorentz',
+    parser.add_argument('-manifold', type=str, default='poincare',
                         choices=MANIFOLDS.keys(), help='Embedding manifold')
     parser.add_argument('-lr', type=float, default=1000,
                         help='Learning rate')
@@ -123,18 +118,12 @@ def main():
 
     # setup debugging and logigng
     log_level = logging.DEBUG if opt.debug else logging.INFO
-    log = logging.getLogger('lorentz')
+    log = logging.getLogger('poincare')
     logging.basicConfig(level=log_level, format='%(message)s', stream=sys.stdout)
 
     if opt.gpu >= 0 and opt.train_threads > 1:
         opt.gpu = -1
         log.warning(f'Specified hogwild training with GPU, defaulting to CPU...')
-
-
-    # set default tensor type
-    th.set_default_tensor_type('torch.DoubleTensor')
-    # set device
-    device = th.device(f'cuda:{opt.gpu}' if opt.gpu >= 0 else 'cpu')
 
     # select manifold to optimize on
     manifold = MANIFOLDS[opt.manifold](debug=opt.debug, max_norm=opt.maxnorm)
@@ -151,9 +140,8 @@ def main():
         dset = load_adjacency_matrix(opt.dset, 'hdf5')
         log.info('Setting up dataset...')
         data = AdjacencyDataset(dset, opt.negs, opt.batchsize, opt.ndproc,
-            opt.burnin > 0, sample_dampening=opt.dampening)
+                                opt.burnin > 0, sample_dampening=opt.dampening)
         model = Embedding(data.N, opt.dim, manifold, sparse=opt.sparse)
-        objects = dset['objects']
 
     # set burnin parameters
     data.neg_multiplier = opt.neg_multiplier
@@ -166,19 +154,28 @@ def main():
         opt.lr = opt.lr * opt.batchsize
 
     # setup optimizer
-    optimizer = RiemannianSGD(model.optim_params(manifold), lr=opt.lr)
+    optimizer = RSGDTF(learning_rate=opt.lr, rgrad=manifold.rgrad, expm=manifold.expm)
+    model.compile(optimizer=optimizer,
+                  loss='softmax_cross_entropy',
+                  metrics=['accuracy'])
 
-    # setup checkpoint
-    checkpoint = LocalCheckpoint(
-        opt.checkpoint,
-        include_in_all={'conf' : vars(opt), 'objects' : objects},
-        start_fresh=opt.fresh
-    )
+    import ipdb; ipdb.set_trace()
+    with tf.Graph().as_default(), tf.Session() as session:
+        with tf.device("/cpu:0"):
+            model.fit(data, epochs=5)
+    # model.fit(x_train, y_train, epochs=5)
+
+    # # setup checkpoint
+    # checkpoint = LocalCheckpoint(
+    #     opt.checkpoint,
+    #     include_in_all={'conf': vars(opt), 'objects': objects},
+    #     start_fresh=opt.fresh
+    # )
 
     # get state from checkpoint
-    state = checkpoint.initialize({'epoch': 0, 'model': model.state_dict()})
-    model.load_state_dict(state['model'])
-    opt.epoch_start = state['epoch']
+    # state = checkpoint.initialize({'epoch': 0, 'model': model.state_dict()})
+    # model.load_state_dict(state['model'])
+    # opt.epoch_start = state['epoch']
 
     adj = {}
     for inputs, _ in data:
@@ -190,56 +187,56 @@ def main():
             else:
                 adj[x] = {y}
 
-    controlQ, logQ = mp.Queue(), mp.Queue()
-    control_thread = mp.Process(target=async_eval, args=(adj, controlQ, logQ, opt))
-    control_thread.start()
+    # controlQ, logQ = mp.Queue(), mp.Queue()
+    # control_thread = mp.Process(target=async_eval, args=(adj, controlQ, logQ, opt))
+    # control_thread.start()
 
     # control closure
-    def control(model, epoch, elapsed, loss):
-        """
-        Control thread to evaluate embedding
-        """
-        lt = model.w_avg if hasattr(model, 'w_avg') else model.lt.weight.data
-        manifold.normalize(lt)
+    # def control(model, epoch, elapsed, loss):
+    #     """
+    #     Control thread to evaluate embedding
+    #     """
+    #     lt = model.w_avg if hasattr(model, 'w_avg') else model.lt.weight.data
+    #     manifold.normalize(lt)
+    #
+    #     checkpoint.path = f'{opt.checkpoint}.{epoch}'
+    #     checkpoint.save({
+    #         'model': model.state_dict(),
+    #         'embeddings': lt,
+    #         'epoch': epoch,
+    #         'manifold': opt.manifold,
+    #     })
+    #
+    #     controlQ.put((epoch, elapsed, loss, checkpoint.path))
+    #
+    #     while not logQ.empty():
+    #         lmsg, pth = logQ.get()
+    #         shutil.move(pth, opt.checkpoint)
+    #         log.info(f'json_stats: {json.dumps(lmsg)}')
 
-        checkpoint.path = f'{opt.checkpoint}.{epoch}'
-        checkpoint.save({
-            'model': model.state_dict(),
-            'embeddings': lt,
-            'epoch': epoch,
-            'manifold': opt.manifold,
-        })
-
-        controlQ.put((epoch, elapsed, loss, checkpoint.path))
-
-        while not logQ.empty():
-            lmsg, pth = logQ.get()
-            shutil.move(pth, opt.checkpoint)
-            log.info(f'json_stats: {json.dumps(lmsg)}')
-
-    control.checkpoint = True
-    model = model.to(device)
-    if hasattr(model, 'w_avg'):
-        model.w_avg = model.w_avg.to(device)
-    if opt.train_threads > 1:
-        threads = []
-        model = model.share_memory()
-        args = (device, model, data, optimizer, opt, log)
-        kwargs = {'ctrl': control, 'progress' : not opt.quiet}
-        for i in range(opt.train_threads):
-            kwargs['rank'] = i
-            threads.append(mp.Process(target=train.train, args=args, kwargs=kwargs))
-            threads[-1].start()
-        [t.join() for t in threads]
-    else:
-        train.train(device, model, data, optimizer, opt, log, ctrl=control,
-            progress=not opt.quiet)
-    controlQ.put(None)
-    control_thread.join()
-    while not logQ.empty():
-        lmsg, pth = logQ.get()
-        shutil.move(pth, opt.checkpoint)
-        log.info(f'json_stats: {json.dumps(lmsg)}')
+    # control.checkpoint = True
+    # model = model.to(device)
+    # if hasattr(model, 'w_avg'):
+    #     model.w_avg = model.w_avg.to(device)
+    # if opt.train_threads > 1:
+    #     threads = []
+    #     model = model.share_memory()
+    #     args = (device, model, data, optimizer, opt, log)
+    #     kwargs = {'ctrl': control, 'progress': not opt.quiet}
+    #     for i in range(opt.train_threads):
+    #         kwargs['rank'] = i
+    #         threads.append(mp.Process(target=train.train, args=args, kwargs=kwargs))
+    #         threads[-1].start()
+    #     [t.join() for t in threads]
+    # else:
+    #     train.train(device, model, data, optimizer, opt, log, ctrl=control,
+    #                 progress=not opt.quiet)
+    # controlQ.put(None)
+    # control_thread.join()
+    # while not logQ.empty():
+    #     lmsg, pth = logQ.get()
+    #     shutil.move(pth, opt.checkpoint)
+    #     log.info(f'json_stats: {json.dumps(lmsg)}')
 
 
 if __name__ == '__main__':
