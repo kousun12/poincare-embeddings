@@ -101,8 +101,7 @@ class Embedding(tf.keras.Model):
         e = self.manifold.normalize(inputs)
         if self.pre_hook is not None:
             e = self.pre_hook(e)
-        fval = self._forward(e)
-        return fval
+        return self._forward(e)
 
     def embedding(self):
         return self.emb

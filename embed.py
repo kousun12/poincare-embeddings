@@ -6,6 +6,8 @@
 # LICENSE file in the root directory of this source tree.
 
 import tensorflow as tf
+tf.enable_eager_execution()
+from tqdm import tqdm
 import numpy as np
 import logging
 import argparse
@@ -159,10 +161,10 @@ def main():
                   loss='softmax_cross_entropy',
                   metrics=['accuracy'])
 
-    import ipdb; ipdb.set_trace()
-    with tf.Graph().as_default(), tf.Session() as session:
-        with tf.device("/cpu:0"):
-            model.fit(data, epochs=5)
+    # with tf.Graph().as_default(), tf.Session() as session:
+    with tf.device("/cpu:0"):
+        # loader_iter = tqdm(data)
+        model.fit(x=idx, y=weights, epochs=5)
     # model.fit(x_train, y_train, epochs=5)
 
     # # setup checkpoint
