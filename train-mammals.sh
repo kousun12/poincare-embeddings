@@ -15,7 +15,7 @@ python3 embed.py \
        -manifold poincare \
        -dset wordnet/mammal_closure.csv \
        -checkpoint mammals.pth \
-       -batchsize 10 \
+       -batchsize 2 \
        -eval_each 1 \
        -fresh \
        -sparse \

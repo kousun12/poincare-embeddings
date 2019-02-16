@@ -162,8 +162,24 @@ def main():
                   metrics=['accuracy'])
 
     # with tf.Graph().as_default(), tf.Session() as session:
+    inc_dataset = tf.data.Dataset.range(len(weights))
+    dec_dataset = tf.data.Dataset.range(0, -len(weights), -1)
+    dataset = tf.data.Dataset.zip((inc_dataset, dec_dataset))
+    batched_dataset = dataset.batch(opt.batchsize)
+
+    iterator = batched_dataset.make_one_shot_iterator()
+    next_element = iterator.get_next()
+
+    def _gen(d):
+        def gen():
+            for i_batch, (inputs, targets) in enumerate(d):
+                yield (inputs, targets)
+        return gen
+
+    iterator = tf.data.Dataset.from_generator(_gen(data), tf.int64)
     with tf.device("/cpu:0"):
         # loader_iter = tqdm(data)
+        import ipdb; ipdb.set_trace()
         model.fit(x=idx, y=weights, epochs=5)
     # model.fit(x_train, y_train, epochs=5)
 

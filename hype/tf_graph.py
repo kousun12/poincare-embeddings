@@ -98,6 +98,7 @@ class Embedding(tf.keras.Model):
         raise NotImplementedError()
 
     def call(self, inputs, training=False):
+        import ipdb; ipdb.set_trace()
         e = self.manifold.normalize(inputs)
         if self.pre_hook is not None:
             e = self.pre_hook(e)

@@ -13,7 +13,7 @@ cimport numpy as npc
 cimport cython
 
 import numpy as np
-import torch
+import tensorflow
 from libcpp cimport bool
 from libcpp.vector cimport vector
 from libcpp.unordered_set cimport unordered_set
@@ -133,13 +133,15 @@ cdef class BatchedDataset:
         while self.current < self.idx.shape[0]:
             current = self.current
             self.current += self.batch_size
-            ix = torch.LongTensor(self.batch_size, self.nnegatives() + 2)
+            ix = tensorflow.random_uniform([self.batch_size, self.nnegatives() + 2], dtype=tensorflow.int64, maxval=tensorflow.int64.max)
             memview = ix.numpy()
             with nogil:
                 count = self._getbatch(current, memview)
+            print(f'Count: {count}')
+            print(f'ix: {ix}')
             if count < self.batch_size:
                 ix = ix.narrow(0, 0, count)
-            self.queue.put((ix, torch.zeros(ix.size(0)).long()))
+            self.queue.put((ix, tensorflow.zeros(ix.shape[0], dtype=tensorflow.int64)))
         self.queue.put(i)
 
     def iter(self):
