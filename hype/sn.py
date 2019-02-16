@@ -27,38 +27,40 @@ class Embedding(tf_graph.Embedding):
 
 
 # This class is now deprecated in favor of BatchedDataset (graph_dataset.pyx)
-# class Dataset(tf_graph.Dataset):
-#     def __getitem__(self, i):
-#         t, h = self.idx[i]
-#         negs = set()
-#         ntries = 0
-#         nnegs = int(self.nnegatives())
-#         if t not in self._weights:
-#             negs.add(t)
-#         else:
-#             while ntries < self.max_tries and len(negs) < nnegs:
-#                 if self.burnin:
-#                     n = randint(0, len(self.unigram_table))
-#                     n = int(self.unigram_table[n])
-#                 else:
-#                     n = randint(0, len(self.objects))
-#                 if (n not in self._weights[t]) or \
-#                         (self._weights[t][n] < self._weights[t][h]):
-#                     negs.add(n)
-#                 ntries += 1
-#         if len(negs) == 0:
-#             negs.add(t)
-#         ix = [t, h] + list(negs)
-#         while len(ix) < nnegs + 2:
-#             ix.append(ix[randint(2, len(ix))])
-#         return th.LongTensor(ix).view(1, len(ix)), th.zeros(1).long()
-#
+class Dataset(tf_graph.Dataset):
+    def __getitem__(self, i):
+        t, h = self.idx[i]
+        negs = set()
+        ntries = 0
+        nnegs = int(self.nnegatives())
+        if t not in self._weights:
+            negs.add(t)
+        else:
+            while ntries < self.max_tries and len(negs) < nnegs:
+                if self.burnin:
+                    n = randint(0, len(self.unigram_table))
+                    n = int(self.unigram_table[n])
+                else:
+                    n = randint(0, len(self.objects))
+                if (n not in self._weights[t]) or \
+                        (self._weights[t][n] < self._weights[t][h]):
+                    negs.add(n)
+                ntries += 1
+        if len(negs) == 0:
+            negs.add(t)
+        ix = [t, h] + list(negs)
+        while len(ix) < nnegs + 2:
+            ix.append(ix[randint(2, len(ix))])
+        return tf.constant([ix], dtype=tf.int64), tf.constant([0], dtype=tf.int64)
+        # return th.LongTensor(ix).view(1, len(ix)), th.zeros(1).long()
+
 
 def initialize(manifold, opt, idx, objects, weights, sparse=False):
     conf = []
     mname = model_name % (opt.manifold, opt.dim)
     # noinspection PyArgumentList
-    data = BatchedDataset(idx, objects, weights, opt.negs, opt.batchsize, opt.ndproc, opt.burnin > 0, opt.dampening)
+    # data = BatchedDataset(idx, objects, weights, opt.negs, opt.batchsize, opt.ndproc, opt.burnin > 0, opt.dampening)
+    data = Dataset(idx, objects, weights, opt.negs)
     model = Embedding(
         len(data.objects),
         opt.dim,

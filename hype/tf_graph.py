@@ -6,6 +6,8 @@
 # LICENSE file in the root directory of this source tree.
 
 import numpy as np
+from collections import defaultdict as ddict
+from numpy.random import choice
 import pandas
 import h5py
 import tensorflow as tf
@@ -122,61 +124,57 @@ class Embedding(tf.keras.Model):
         self.saver = tf.train.Saver()
 
 # # This class is now deprecated in favor of BatchedDataset (graph_dataset.pyx)
-# class Dataset(DS):
-#     _neg_multiplier = 1
-#     _ntries = 10
-#     _sample_dampening = 0.75
-#
-#     def __init__(self, idx, objects, weights, nnegs, unigram_size=1e8):
-#         assert idx.ndim == 2 and idx.shape[1] == 2
-#         assert weights.ndim == 1
-#         assert len(idx) == len(weights)
-#         assert nnegs >= 0
-#         assert unigram_size >= 0
-#
-#         print('Indexing data')
-#         self.idx = idx
-#         self.nnegs = nnegs
-#         self.burnin = False
-#         self.objects = objects
-#
-#         self._weights = ddict(lambda: ddict(int))
-#         self._counts = np.ones(len(objects), dtype=np.float)
-#         self.max_tries = self.nnegs * self._ntries
-#         for i in range(idx.shape[0]):
-#             t, h = self.idx[i]
-#             self._counts[h] += weights[i]
-#             self._weights[t][h] += weights[i]
-#         self._weights = dict(self._weights)
-#         nents = int(np.array(list(self._weights.keys())).max())
-#         assert len(objects) > nents, f'Number of objects do no match'
-#
-#         if unigram_size > 0:
-#             c = self._counts ** self._sample_dampening
-#             self.unigram_table = choice(
-#                 len(objects),
-#                 size=int(unigram_size),
-#                 p=(c / c.sum())
-#             )
-#
-#     def __len__(self):
-#         return self.idx.shape[0]
-#
-#     def weights(self, inputs, targets):
-#         return self.fweights(self, inputs, targets)
-#
-#     def nnegatives(self):
-#         if self.burnin:
-#             return self._neg_multiplier * self.nnegs
-#         else:
-#             return self.nnegs
-#
-#     @classmethod
-#     def collate(cls, batch):
-#         inputs, targets = zip(*batch)
-#         return th.cat(inputs, 0), th.cat(targets, 0)
-#
-#
+class Dataset(object):
+    _neg_multiplier = 1
+    _ntries = 10
+    _sample_dampening = 0.75
+
+    def __init__(self, idx, objects, weights, nnegs, unigram_size=1e8):
+        assert idx.ndim == 2 and idx.shape[1] == 2
+        assert weights.ndim == 1
+        assert len(idx) == len(weights)
+        assert nnegs >= 0
+        assert unigram_size >= 0
+
+        print('Indexing data')
+        self.idx = idx
+        self.nnegs = nnegs
+        self.burnin = False
+        self.objects = objects
+
+        self._weights = ddict(lambda: ddict(int))
+        self._counts = np.ones(len(objects), dtype=np.float)
+        self.max_tries = self.nnegs * self._ntries
+        for i in range(idx.shape[0]):
+            t, h = self.idx[i]
+            self._counts[h] += weights[i]
+            self._weights[t][h] += weights[i]
+        self._weights = dict(self._weights)
+        nents = int(np.array(list(self._weights.keys())).max())
+        assert len(objects) > nents, f'Number of objects do no match'
+
+        if unigram_size > 0:
+            c = self._counts ** self._sample_dampening
+            self.unigram_table = choice(
+                len(objects),
+                size=int(unigram_size),
+                p=(c / c.sum())
+            )
+
+    def __len__(self):
+        return self.idx.shape[0]
+
+    def weights(self, inputs, targets):
+        return self.fweights(self, inputs, targets)
+
+    def nnegatives(self):
+        if self.burnin:
+            return self._neg_multiplier * self.nnegs
+        else:
+            return self.nnegs
+
+
+
 # # This function is now deprecated in favor of eval_reconstruction
 # def eval_reconstruction_slow(adj, lt, distfn):
 #     ranks = []

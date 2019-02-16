@@ -137,8 +137,6 @@ cdef class BatchedDataset:
             memview = ix.numpy()
             with nogil:
                 count = self._getbatch(current, memview)
-            print(f'Count: {count}')
-            print(f'ix: {ix}')
             if count < self.batch_size:
                 ix = ix.narrow(0, 0, count)
             self.queue.put((ix, tensorflow.zeros(ix.shape[0], dtype=tensorflow.int64)))
