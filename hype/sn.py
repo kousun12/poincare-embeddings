@@ -18,10 +18,11 @@ class Embedding(tf_graph.Embedding):
         # self.lossfn = nn.functional.cross_entropy
 
     def _forward(self, e):
-        import ipdb; ipdb.set_trace()
-        o = e.narrow(1, 1, e.size(1) - 1)
-        s = e.narrow(1, 0, 1).expand_as(o)
-        return -tf.squeeze(self.dist(s, o))
+        return self.dist(e)
+        # import ipdb; ipdb.set_trace()
+        # o = e.narrow(1, 1, e.size(1) - 1)
+        # s = e.narrow(1, 0, 1).expand_as(o)
+        # return -tf.squeeze(self.dist(s, o))
 
     # def loss(self, preds, targets, weight=None, size_average=True):
     #     return self.lossfn(preds, targets)
@@ -52,7 +53,7 @@ class Dataset(tf_graph.Dataset):
         ix = [t, h] + list(negs)
         while len(ix) < nnegs + 2:
             ix.append(ix[randint(2, len(ix))])
-        return tf.constant([ix], dtype=tf.int64), tf.constant([0], dtype=tf.int64)
+        return tf.constant(ix, dtype=tf.int64), tf.constant(0, dtype=tf.int64)
         # return th.LongTensor(ix).view(1, len(ix)), th.zeros(1).long()
 
 

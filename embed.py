@@ -161,13 +161,13 @@ def main():
                   metrics=['accuracy'])
 
     # with tf.Graph().as_default(), tf.Session() as session:
-    def _gen(d):
+    def _gen(data):
         def gen():
-            for i_batch, (inputs, targets) in enumerate(d):
-                yield (inputs, targets)
+            for d in data:
+                yield d
         return gen
 
-    iterator = tf.data.Dataset.from_generator(_gen(data), (tf.int64, tf.int64))
+    iterator = tf.data.Dataset.from_generator(_gen(data), (tf.int64, tf.int64), output_shapes=(opt.negs + 2, ()))
     itit = iterator.make_one_shot_iterator()
     with tf.device("/cpu:0"):
         # loader_iter = tqdm(data)
