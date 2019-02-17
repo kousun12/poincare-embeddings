@@ -8,6 +8,7 @@
 import tensorflow as tf
 from . import tf_graph
 from .graph_dataset import BatchedDataset
+from numpy.random import randint
 
 model_name = '%s_dim%d'
 
