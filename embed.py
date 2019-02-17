@@ -6,13 +6,16 @@
 # LICENSE file in the root directory of this source tree.
 
 import tensorflow as tf
+
+from hype.tf_graph import loss, train
+
 tf.enable_eager_execution()
+
 import numpy as np
 import logging
 import argparse
 from hype.sn import Embedding, initialize
 from hype.adjacency_matrix_dataset import AdjacencyDataset
-from hype import train
 from hype.graph import load_adjacency_matrix, load_edge_list, eval_reconstruction
 from hype.rsgd import RSGDTF
 from hype.lorentz import LorentzManifold
@@ -156,9 +159,9 @@ def main():
 
     # setup optimizer
     optimizer = RSGDTF(learning_rate=opt.lr, rgrad=manifold.rgrad, expm=manifold.expm)
-    model.compile(optimizer=optimizer,
-                  loss='softmax_cross_entropy',
-                  metrics=['accuracy'])
+    # model.compile(optimizer=optimizer,
+    #               loss='categorical_crossentropy',
+    #               metrics=['accuracy'])
 
     # with tf.Graph().as_default(), tf.Session() as session:
     def _gen(data):
@@ -170,8 +173,15 @@ def main():
     iterator = tf.data.Dataset.from_generator(_gen(data), (tf.int64, tf.int64), output_shapes=(opt.negs + 2, ()))
     itit = iterator.make_one_shot_iterator()
     with tf.device("/cpu:0"):
+        epochs = range(10)
+        for epoch in epochs:
+            for inputs, outputs in data:
+                # current_loss = loss(model(inputs), outputs)
+                train(model, inputs, outputs, optimizer)
+            # print('Epoch %2d: loss=%2.5f' %
+            #       (epoch, current_loss))
         # loader_iter = tqdm(data)
-        model.fit(x=itit, steps_per_epoch=2)
+        # model.fit(x=itit, steps_per_epoch=2)
     # model.fit(x_train, y_train, epochs=5)
 
     # # setup checkpoint

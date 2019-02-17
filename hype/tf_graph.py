@@ -74,12 +74,18 @@ def load_edge_list(path, symmetrize=False):
     return idx, objects.tolist(), weights
 
 
-def train(model, inputs, outputs, learning_rate):
-    with tf.GradientTape() as t:
-        _loss = model.loss(model(inputs), outputs)
-    dW, db = t.gradient(_loss, [model.W, model.b])
-    model.W.assign_sub(learning_rate * dW)
-    model.b.assign_sub(learning_rate * db)
+loss = tf.keras.losses.categorical_crossentropy
+
+
+def train(model, inputs, outputs, optimizer):
+    import ipdb; ipdb.set_trace()
+    # loss, var_list = var_list
+    optimizer.compute_gradients(loss(inputs, outputs), [model.emb])
+
+    # with tf.GradientTape() as t:
+    #     _loss = loss(model(inputs), outputs)
+    # dEmb = t.gradient(_loss, [model.emb])
+    # model.emb.assign_sub(learning_rate * dEmb)
 
 
 class Embedding(tf.keras.Model):
@@ -93,14 +99,12 @@ class Embedding(tf.keras.Model):
         self.pre_hook = None
         self.post_hook = None
         scale = 1e-4
-        tf.losses
         self.emb = tf.Variable(tf.random_uniform([size, dim], -scale, scale), name="emb")
 
     def _forward(self, x):
         raise NotImplementedError()
 
     def call(self, inputs, training=False):
-        import ipdb; ipdb.set_trace()
         # e = self.manifold.normalize(inputs)
         if self.pre_hook is not None:
             inputs = self.pre_hook(inputs)
@@ -122,6 +126,7 @@ class Embedding(tf.keras.Model):
         # Properly initialize all variables.
         tf.global_variables_initializer().run()
         self.saver = tf.train.Saver()
+
 
 # # This class is now deprecated in favor of BatchedDataset (graph_dataset.pyx)
 class Dataset(object):
@@ -172,8 +177,6 @@ class Dataset(object):
             return self._neg_multiplier * self.nnegs
         else:
             return self.nnegs
-
-
 
 # # This function is now deprecated in favor of eval_reconstruction
 # def eval_reconstruction_slow(adj, lt, distfn):
