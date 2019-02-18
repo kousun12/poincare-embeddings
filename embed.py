@@ -176,10 +176,8 @@ def main():
         epochs = range(10)
         for epoch in epochs:
             for inputs, outputs in data:
-                # current_loss = loss(model(inputs), outputs)
-                train(model, inputs, outputs, optimizer)
-            # print('Epoch %2d: loss=%2.5f' %
-            #       (epoch, current_loss))
+                current_loss = train(model, inputs, outputs, learning_rate=opt.lr)
+            print('Epoch %2d: loss=%2.5f' % (epoch, current_loss))
         # loader_iter = tqdm(data)
         # model.fit(x=itit, steps_per_epoch=2)
     # model.fit(x_train, y_train, epochs=5)

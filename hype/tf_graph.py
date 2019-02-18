@@ -74,13 +74,22 @@ def load_edge_list(path, symmetrize=False):
     return idx, objects.tolist(), weights
 
 
-loss = tf.keras.losses.categorical_crossentropy
+# loss = tf.keras.losses.categorical_crossentropy
+loss = tf.nn.softmax_cross_entropy_with_logits_v2
 
+def train(model, inputs, outputs, learning_rate=0.1):
+    with tf.GradientTape() as t:
+        t.watch([model.emb])
+        _loss = model.loss(model(inputs), outputs)
+    var_list = t.watched_variables()
+    dEmb, *rest = t.gradient(_loss, var_list, None)
 
-def train(model, inputs, outputs, optimizer):
+    model.emb.assign_sub(dEmb * tf.constant(learning_rate))
     import ipdb; ipdb.set_trace()
+    return _loss
+
     # loss, var_list = var_list
-    optimizer.compute_gradients(loss(inputs, outputs), [model.emb])
+    # optimizer.compute_gradients(_loss, [model.emb])
 
     # with tf.GradientTape() as t:
     #     _loss = loss(model(inputs), outputs)
@@ -103,6 +112,9 @@ class Embedding(tf.keras.Model):
 
     def _forward(self, x):
         raise NotImplementedError()
+
+    def loss(self, actual, expected):
+        return tf.reduce_mean(tf.square(tf.cast(expected, dtype='float32') - actual))
 
     def call(self, inputs, training=False):
         # e = self.manifold.normalize(inputs)
