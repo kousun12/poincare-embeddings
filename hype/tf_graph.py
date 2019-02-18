@@ -11,6 +11,9 @@ from numpy.random import choice
 import pandas
 import h5py
 import tensorflow as tf
+from tensorflow.python.ops import math_ops
+from tensorflow.python.ops import state_ops
+from tensorflow.python.framework import ops
 
 
 def load_adjacency_matrix(path, format='hdf5', symmetrize=False):
@@ -77,15 +80,22 @@ def load_edge_list(path, symmetrize=False):
 # loss = tf.keras.losses.categorical_crossentropy
 loss = tf.nn.softmax_cross_entropy_with_logits_v2
 
-def train(model, inputs, outputs, learning_rate=0.1):
+lr = None
+
+
+def _apply_dense(model, grad, var, lr_t):
+    d_p = model.manifold.rgrad(var, grad)
+    import ipdb; ipdb.set_trace()
+    return state_ops.assign_sub(var, model.manifold.expm(var, d_p, lr=lr_t))
+
+
+def train(model, inputs, outputs, learning_rate=tf.constant(0.1)):
     with tf.GradientTape() as t:
         t.watch([model.emb])
         _loss = model.loss(model(inputs), outputs)
     var_list = t.watched_variables()
     dEmb, *rest = t.gradient(_loss, var_list, None)
-
-    model.emb.assign_sub(dEmb * tf.constant(learning_rate))
-    import ipdb; ipdb.set_trace()
+    _apply_dense(model, dEmb, model.emb, learning_rate)
     return _loss
 
     # loss, var_list = var_list

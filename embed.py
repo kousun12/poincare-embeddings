@@ -7,9 +7,9 @@
 
 import tensorflow as tf
 
-from hype.tf_graph import loss, train
-
 tf.enable_eager_execution()
+from tensorflow.python.framework import ops
+from hype.tf_graph import loss, train
 
 import numpy as np
 import logging
@@ -159,6 +159,7 @@ def main():
 
     # setup optimizer
     optimizer = RSGDTF(learning_rate=opt.lr, rgrad=manifold.rgrad, expm=manifold.expm)
+
     # model.compile(optimizer=optimizer,
     #               loss='categorical_crossentropy',
     #               metrics=['accuracy'])
@@ -168,15 +169,17 @@ def main():
         def gen():
             for d in data:
                 yield d
+
         return gen
 
     iterator = tf.data.Dataset.from_generator(_gen(data), (tf.int64, tf.int64), output_shapes=(opt.negs + 2, ()))
     itit = iterator.make_one_shot_iterator()
     with tf.device("/cpu:0"):
         epochs = range(10)
+        lr = ops.convert_to_tensor(opt.lr, name="learning_rate")
         for epoch in epochs:
             for inputs, outputs in data:
-                current_loss = train(model, inputs, outputs, learning_rate=opt.lr)
+                current_loss = train(model, inputs, outputs, learning_rate=lr)
             print('Epoch %2d: loss=%2.5f' % (epoch, current_loss))
         # loader_iter = tqdm(data)
         # model.fit(x=itit, steps_per_epoch=2)
