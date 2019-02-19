@@ -85,10 +85,12 @@ def _apply_dense(inputs, model, grad, var, lr_t):
     idx = tf.gather(inputs, 0)
     mask = tf.Variable(tf.ones_like(grad, dtype=grad.dtype))
     mask = tf.assign(mask[idx], tf.zeros_like(mask[idx]))
-    import ipdb; ipdb.set_trace()
+    # import ipdb; ipdb.set_trace()
     grad = grad * mask
     d_p = model.manifold.rgrad(var, grad)
-    return state_ops.assign_sub(var, model.manifold.expm(var, d_p, lr=lr_t))
+    update = model.manifold.expm(var, d_p, lr=lr_t)
+    return var.assign(update)
+    # return state_ops.assign_sub(var, update)
 
 
 def train(model, inputs, outputs, learning_rate=tf.constant(0.1)):
