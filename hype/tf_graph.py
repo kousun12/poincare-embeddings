@@ -78,24 +78,28 @@ def load_edge_list(path, symmetrize=False):
 
 
 # loss = tf.keras.losses.categorical_crossentropy
-loss = tf.nn.softmax_cross_entropy_with_logits_v2
-
-lr = None
 
 
-def _apply_dense(model, grad, var, lr_t):
-    d_p = model.manifold.rgrad(var, grad)
+
+def _apply_dense(inputs, model, grad, var, lr_t):
+    idx = tf.gather(inputs, 0)
+    mask = tf.Variable(tf.ones_like(grad, dtype=grad.dtype))
+    mask = tf.assign(mask[idx], tf.zeros_like(mask[idx]))
     import ipdb; ipdb.set_trace()
+    grad = grad * mask
+    d_p = model.manifold.rgrad(var, grad)
     return state_ops.assign_sub(var, model.manifold.expm(var, d_p, lr=lr_t))
 
 
 def train(model, inputs, outputs, learning_rate=tf.constant(0.1)):
     with tf.GradientTape() as t:
         t.watch([model.emb])
-        _loss = model.loss(model(inputs), outputs)
+        pred = model(inputs)
+        _loss = model.loss(pred, outputs)
     var_list = t.watched_variables()
     dEmb, *rest = t.gradient(_loss, var_list, None)
-    _apply_dense(model, dEmb, model.emb, learning_rate)
+    _apply_dense(inputs, model, dEmb, model.emb, learning_rate)
+    print(f'loss: {_loss}')
     return _loss
 
     # loss, var_list = var_list

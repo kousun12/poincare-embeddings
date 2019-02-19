@@ -9,7 +9,7 @@ import tensorflow as tf
 
 tf.enable_eager_execution()
 from tensorflow.python.framework import ops
-from hype.tf_graph import loss, train
+from hype.tf_graph import train
 
 import numpy as np
 import logging
@@ -179,8 +179,7 @@ def main():
         lr = ops.convert_to_tensor(opt.lr, name="learning_rate")
         for epoch in epochs:
             for inputs, outputs in data:
-                current_loss = train(model, inputs, outputs, learning_rate=lr)
-            print('Epoch %2d: loss=%2.5f' % (epoch, current_loss))
+                train(model, inputs, outputs, learning_rate=lr)
         # loader_iter = tqdm(data)
         # model.fit(x=itit, steps_per_epoch=2)
     # model.fit(x_train, y_train, epochs=5)

@@ -20,7 +20,6 @@ class Embedding(tf_graph.Embedding):
     def _forward(self, e):
         u = tf.gather(self.emb, 0)
         v = tf.gather(self.emb, tf.strided_slice(e, [1], [52]))
-
         return self.dist(u, v)
         # import ipdb; ipdb.set_trace()
         # o = e.narrow(1, 1, e.size(1) - 1)
