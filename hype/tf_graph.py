@@ -77,7 +77,6 @@ def load_edge_list(path, symmetrize=False):
     return idx, objects.tolist(), weights
 
 
-# loss = tf.keras.losses.categorical_crossentropy
 
 
 
@@ -130,7 +129,9 @@ class Embedding(tf.keras.Model):
         raise NotImplementedError()
 
     def loss(self, actual, expected):
-        return tf.reduce_mean(tf.square(tf.cast(expected, dtype='float32') - actual))
+        return tf.reduce_mean(-tf.reduce_sum(tf.cast(expected, actual.dtype) * tf.log(actual)))
+        # tf.nn.softmax_cross_entropy_with_logits(labels=expected, logits=actual)
+        # return tf.reduce_mean(tf.square(tf.cast(expected, dtype='float32') - actual))
 
     def call(self, inputs, training=False):
         # e = self.manifold.normalize(inputs)
