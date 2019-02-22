@@ -1,0 +1,2 @@
+model_checkpoint_path: "mammals.tf"
+all_model_checkpoint_paths: "mammals.tf"

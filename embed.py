@@ -172,14 +172,16 @@ def main():
 
         return gen
 
-    iterator = tf.data.Dataset.from_generator(_gen(data), (tf.int64, tf.int64), output_shapes=(opt.negs + 2, ()))
-    itit = iterator.make_one_shot_iterator()
     with tf.device("/cpu:0"):
-        epochs = range(10)
+        epochs = range(3)
         lr = ops.convert_to_tensor(opt.lr, name="learning_rate")
         for epoch in epochs:
             for inputs, outputs in data:
-                train(model, inputs, outputs, learning_rate=lr)
+                current_loss = train(model, inputs, outputs, learning_rate=lr)
+            print(f'epoch {epoch} loss: {current_loss}')
+            # model.save(opt.checkpoint or "poincare.h5")
+            model.save_weights(opt.checkpoint or "/tmp/hype_emb.tf")
+        print(model.summary)
         # loader_iter = tqdm(data)
         # model.fit(x=itit, steps_per_epoch=2)
     # model.fit(x_train, y_train, epochs=5)
@@ -196,15 +198,16 @@ def main():
     # model.load_state_dict(state['model'])
     # opt.epoch_start = state['epoch']
 
-    adj = {}
-    for inputs, _ in data:
-        for row in inputs:
-            x = row[0].item()
-            y = row[1].item()
-            if x in adj:
-                adj[x].add(y)
-            else:
-                adj[x] = {y}
+    # adj = {}
+    # for inputs, _ in data:
+    #     for row in inputs:
+    #         x = row[0].item()
+    #         y = row[1].item()
+    #         if x in adj:
+    #             adj[x].add(y)
+    #         else:
+
+    #             adj[x] = {y}
 
     # controlQ, logQ = mp.Queue(), mp.Queue()
     # control_thread = mp.Process(target=async_eval, args=(adj, controlQ, logQ, opt))

@@ -21,5 +21,6 @@ def pplot(names, embeddings, name='mammal'):
 
 if __name__ == '__main__':
     checkpoint = torch.load('mammals-2d.pth')
+    import ipdb; ipdb.set_trace()
     pplot(checkpoint['objects'][:400], checkpoint['embeddings'], 'mammals')
     plt.show()

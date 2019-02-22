@@ -100,7 +100,7 @@ def train(model, inputs, outputs, learning_rate=tf.constant(0.1)):
     var_list = t.watched_variables()
     dEmb, *rest = t.gradient(_loss, var_list, None)
     _apply_dense(inputs, model, dEmb, model.emb, learning_rate)
-    print(f'loss: {_loss}')
+    # print(f'loss: {_loss}')
     return _loss
 
     # loss, var_list = var_list
@@ -129,6 +129,7 @@ class Embedding(tf.keras.Model):
         raise NotImplementedError()
 
     def loss(self, actual, expected):
+        # tf.losses.softmax_cross_entropy(expected, actual)
         return tf.reduce_mean(-tf.reduce_sum(tf.cast(expected, actual.dtype) * tf.log(actual)))
         # tf.nn.softmax_cross_entropy_with_logits(labels=expected, logits=actual)
         # return tf.reduce_mean(tf.square(tf.cast(expected, dtype='float32') - actual))
@@ -141,15 +142,6 @@ class Embedding(tf.keras.Model):
 
     def embedding(self):
         return self.emb
-
-    def optim_params(self, manifold):
-        return [{
-            'params': self.emb.value(),
-            'rgrad': manifold.rgrad,
-            'expm': manifold.expm,
-            'logm': manifold.logm,
-            'ptransp': manifold.ptransp,
-        }, ]
 
     def build_graph(self):
         # Properly initialize all variables.
