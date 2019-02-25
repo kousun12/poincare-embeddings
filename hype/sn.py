@@ -18,8 +18,9 @@ class Embedding(tf_graph.Embedding):
         # self.lossfn = nn.functional.cross_entropy
 
     def _forward(self, e):
-        u = tf.gather(self.emb, tf.strided_slice(e, [0], [1]))
-        v = tf.gather(self.emb, tf.strided_slice(e, [1], [e.shape[0]]))
+        import ipdb; ipdb.set_trace()
+        u = tf.gather(self.emb, tf.strided_slice(e, [0, 0], [e.shape[0], 1]))
+        v = tf.gather(self.emb, tf.strided_slice(e, [0, 1], [e.shape[0], e.shape[1]]))
         return self.dist(u, v)
         # import ipdb; ipdb.set_trace()
         # o = e.narrow(1, 1, e.size(1) - 1)
@@ -63,8 +64,8 @@ def initialize(manifold, opt, idx, objects, weights, sparse=False):
     conf = []
     mname = model_name % (opt.manifold, opt.dim)
     # noinspection PyArgumentList
-    # data = BatchedDataset(idx, objects, weights, opt.negs, opt.batchsize, opt.ndproc, opt.burnin > 0, opt.dampening)
-    data = Dataset(idx, objects, weights, opt.negs)
+    data = BatchedDataset(idx, objects, weights, opt.negs, opt.batchsize, opt.ndproc, opt.burnin > 0, opt.dampening)
+    # data = Dataset(idx, objects, weights, opt.negs)
     model = Embedding(
         len(data.objects),
         opt.dim,

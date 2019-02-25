@@ -173,17 +173,17 @@ def main():
         return gen
 
     with tf.device("/cpu:0"):
-        epochs = range(3)
-        lr = ops.convert_to_tensor(opt.lr, name="learning_rate")
+        num_epochs = 10
+        epochs = range(num_epochs)
         for epoch in epochs:
-            for inputs, outputs in data:
+            lr = ops.convert_to_tensor(0.01, name="learning_rate")
+            print(f'lr: {lr}')
+            for batch, (inputs, outputs) in enumerate(data):
                 current_loss = train(model, inputs, outputs, learning_rate=lr)
             print(f'epoch {epoch} loss: {current_loss}')
             # model.save(opt.checkpoint or "poincare.h5")
             model.save_weights(opt.checkpoint or "/tmp/hype_emb.tf")
         print(model.summary)
-        # loader_iter = tqdm(data)
-        # model.fit(x=itit, steps_per_epoch=2)
     # model.fit(x_train, y_train, epochs=5)
 
     # # setup checkpoint

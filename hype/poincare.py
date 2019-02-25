@@ -20,21 +20,8 @@ class PoincareManifold(EuclideanManifold):
         return Distance.forward(u, v, self.eps)
 
     def rgrad(self, p, d_p):
-        # if d_p.is_sparse:
-        #     # todo
-        #     raise NotImplementedError("Sparse gradient updates are not supported.")
-        #     # p_sqnorm = tf.reduce_sum(
-        #     #     p[d_p._indices()[0].squeeze()] ** 2, dim=1,
-        #     #     keepdim=True
-        #     # ).expand_as(d_p._values())
-        #     # n_vals = d_p._values() * ((1 - p_sqnorm) ** 2) / 4
-        #     # n_vals.renorm_(2, 0, 5)
-        #     # d_p = th.sparse.DoubleTensor(d_p._indices(), n_vals, d_p.size())
-        # else:
         p_sqnorm = tf.reduce_sum(p ** 2)
-        # this works because tf auto broadcasts, so we don't need to reshape this
-        d_p = d_p * ((1 - p_sqnorm) ** 2 / 4)
-        return d_p
+        return d_p * ((1 - p_sqnorm) ** 2 / 4)
 
 
 class Distance:
@@ -59,10 +46,3 @@ class Distance:
         z = tf.sqrt(tf.pow(x, 2) - 1)
         return tf.log(x + z)
 
-    @staticmethod
-    def backward(ctx, g):
-        u, v, squnorm, sqvnorm, sqdist = ctx.saved_tensors
-        g = g.unsqueeze(-1)
-        gu = Distance.grad(u, v, squnorm, sqvnorm, sqdist, ctx.eps)
-        gv = Distance.grad(v, u, sqvnorm, squnorm, sqdist, ctx.eps)
-        return g.expand_as(gu) * gu, g.expand_as(gv) * gv, None

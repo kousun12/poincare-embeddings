@@ -16,20 +16,20 @@ from tensorflow.python.ops import state_ops
 from tensorflow.python.framework import ops
 
 
-def load_adjacency_matrix(path, format='hdf5', symmetrize=False):
-    if format == 'hdf5':
-        with h5py.File(path, 'r') as hf:
+def load_adjacency_matrix(path, format="hdf5", symmetrize=False):
+    if format == "hdf5":
+        with h5py.File(path, "r") as hf:
             return {
-                'ids': hf['ids'].value.astype('int'),
-                'neighbors': hf['neighbors'].value.astype('int'),
-                'offsets': hf['offsets'].value.astype('int'),
-                'weights': hf['weights'].value.astype('float'),
-                'objects': hf['objects'].value
+                "ids": hf["ids"].value.astype("int"),
+                "neighbors": hf["neighbors"].value.astype("int"),
+                "offsets": hf["offsets"].value.astype("int"),
+                "weights": hf["weights"].value.astype("float"),
+                "objects": hf["objects"].value,
             }
-    elif format == 'csv':
-        df = pandas.read_csv(path, usecols=['id1', 'id2', 'weight'], engine='c')
+    elif format == "csv":
+        df = pandas.read_csv(path, usecols=["id1", "id2", "weight"], engine="c")
         if symmetrize:
-            rev = df.copy().rename(columns={'id1': 'id2', 'id2': 'id1'})
+            rev = df.copy().rename(columns={"id1": "id2", "id2": "id1"})
             df = pandas.concat([df, rev])
 
         idmap = {}
@@ -42,42 +42,39 @@ def load_adjacency_matrix(path, format='hdf5', symmetrize=False):
                 idlist.append(id)
             return idmap[id]
 
-        df.loc[:, 'id1'] = df['id1'].apply(convert)
-        df.loc[:, 'id2'] = df['id2'].apply(convert)
+        df.loc[:, "id1"] = df["id1"].apply(convert)
+        df.loc[:, "id2"] = df["id2"].apply(convert)
 
-        groups = df.groupby('id1').apply(lambda x: x.sort_values(by='id2'))
-        counts = df.groupby('id1').id2.size()
+        groups = df.groupby("id1").apply(lambda x: x.sort_values(by="id2"))
+        counts = df.groupby("id1").id2.size()
 
         ids = groups.index.levels[0].values
         offsets = counts.loc[ids].values
         offsets[1:] = np.cumsum(offsets)[:-1]
         offsets[0] = 0
-        neighbors = groups['id2'].values
-        weights = groups['weight'].values
+        neighbors = groups["id2"].values
+        weights = groups["weight"].values
         return {
-            'ids': ids.astype('int'),
-            'offsets': offsets.astype('int'),
-            'neighbors': neighbors.astype('int'),
-            'weights': weights.astype('float'),
-            'objects': np.array(idlist)
+            "ids": ids.astype("int"),
+            "offsets": offsets.astype("int"),
+            "neighbors": neighbors.astype("int"),
+            "weights": weights.astype("float"),
+            "objects": np.array(idlist),
         }
     else:
-        raise RuntimeError(f'Unsupported file format {format}')
+        raise RuntimeError(f"Unsupported file format {format}")
 
 
 def load_edge_list(path, symmetrize=False):
-    df = pandas.read_csv(path, usecols=['id1', 'id2', 'weight'], engine='c')
+    df = pandas.read_csv(path, usecols=["id1", "id2", "weight"], engine="c")
     df.dropna(inplace=True)
     if symmetrize:
-        rev = df.copy().rename(columns={'id1': 'id2', 'id2': 'id1'})
+        rev = df.copy().rename(columns={"id1": "id2", "id2": "id1"})
         df = pandas.concat([df, rev])
-    idx, objects = pandas.factorize(df[['id1', 'id2']].values.reshape(-1))
-    idx = idx.reshape(-1, 2).astype('int')
-    weights = df.weight.values.astype('float')
+    idx, objects = pandas.factorize(df[["id1", "id2"]].values.reshape(-1))
+    idx = idx.reshape(-1, 2).astype("int")
+    weights = df.weight.values.astype("float")
     return idx, objects.tolist(), weights
-
-
-
 
 
 def _apply_dense(inputs, model, grad, var, lr_t):
@@ -122,19 +119,23 @@ class Embedding(tf.keras.Model):
         self.dist = manifold.distance
         self.pre_hook = None
         self.post_hook = None
+        self.offset = tf.constant(0.000_001)
         scale = 1e-4
-        self.emb = tf.Variable(tf.random_uniform([size, dim], -scale, scale), name="emb")
+        self.emb = tf.Variable(
+            tf.random_uniform([size, dim], -scale, scale), name="emb"
+        )
 
     def _forward(self, x):
         raise NotImplementedError()
 
     def loss(self, actual, expected):
         # tf.losses.softmax_cross_entropy(expected, actual)
-        return tf.reduce_mean(-tf.reduce_sum(tf.cast(expected, actual.dtype) * tf.log(actual)))
+        _exp = tf.cast(expected, actual.dtype) + self.offset
+        return tf.reduce_mean(-tf.reduce_sum(_exp * tf.log(actual)))
         # tf.nn.softmax_cross_entropy_with_logits(labels=expected, logits=actual)
         # return tf.reduce_mean(tf.square(tf.cast(expected, dtype='float32') - actual))
 
-    def call(self, inputs, training=False):
+    def call(self, inputs, training=False, **kwargs):
         # e = self.manifold.normalize(inputs)
         if self.pre_hook is not None:
             inputs = self.pre_hook(inputs)
@@ -162,7 +163,7 @@ class Dataset(object):
         assert nnegs >= 0
         assert unigram_size >= 0
 
-        print('Indexing data')
+        print("Indexing data")
         self.idx = idx
         self.nnegs = nnegs
         self.burnin = False
@@ -177,14 +178,12 @@ class Dataset(object):
             self._weights[t][h] += weights[i]
         self._weights = dict(self._weights)
         nents = int(np.array(list(self._weights.keys())).max())
-        assert len(objects) > nents, f'Number of objects do no match'
+        assert len(objects) > nents, f"Number of objects do no match"
 
         if unigram_size > 0:
             c = self._counts ** self._sample_dampening
             self.unigram_table = choice(
-                len(objects),
-                size=int(unigram_size),
-                p=(c / c.sum())
+                len(objects), size=int(unigram_size), p=(c / c.sum())
             )
 
     def __len__(self):
@@ -198,6 +197,7 @@ class Dataset(object):
             return self._neg_multiplier * self.nnegs
         else:
             return self.nnegs
+
 
 # # This function is now deprecated in favor of eval_reconstruction
 # def eval_reconstruction_slow(adj, lt, distfn):

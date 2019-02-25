@@ -20,26 +20,12 @@ def pplot(names, embeddings, name='mammal'):
     ax.add_artist(plt.Circle((0, 0), 1., color='black', fill=False))
     for i, w in enumerate(names):
         c0, c1, *rest = embeddings[i]
-        ax.plot(c0, c1, 'o', color='r')
-        ax.text(c0 - .1, c1 + .04, re.sub('\.n\.\d{2}', '', w), color='b')
+        x = c0
+        y = c1
+        ax.plot(x, y, 'o', color='r')
+        ax.text(x - .1, y + .04, re.sub('\.n\.\d{2}', '', w), color='b')
     fig.savefig('plots/' + name + '.png', dpi=fig.dpi)
-'''
-python3 embed.py \
-       -dim 5 \
-       -lr 0.3 \
-       -epochs 300 \
-       -negs 50 \
-       -burnin 20 \
-       -ndproc 4 \
-       -manifold poincare \
-       -dset wordnet/mammal_closure.csv \
-       -checkpoint mammals.tf \
-       -batchsize 2 \
-       -eval_each 1 \
-       -fresh \
-       -sparse \
-       -train_threads 2
-'''
+
 Opts = namedtuple("Opts", "manifold dim negs")
 
 if __name__ == '__main__':
