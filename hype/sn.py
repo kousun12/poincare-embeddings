@@ -18,10 +18,12 @@ class Embedding(tf_graph.Embedding):
         # self.lossfn = nn.functional.cross_entropy
 
     def _forward(self, e):
-        import ipdb; ipdb.set_trace()
-        u = tf.gather(self.emb, tf.strided_slice(e, [0, 0], [e.shape[0], 1]))
-        v = tf.gather(self.emb, tf.strided_slice(e, [0, 1], [e.shape[0], e.shape[1]]))
-        return self.dist(u, v)
+        u = tf.strided_slice(e, [0, 0], [e.shape[0], 1])
+        v = tf.strided_slice(e, [0, 1], [e.shape[0], e.shape[1]])
+
+        _from = tf.nn.embedding_lookup(self.emb, u)
+        _to = tf.nn.embedding_lookup(self.emb, v)
+        return self.dist(_from, _to)
         # import ipdb; ipdb.set_trace()
         # o = e.narrow(1, 1, e.size(1) - 1)
         # s = e.narrow(1, 0, 1).expand_as(o)

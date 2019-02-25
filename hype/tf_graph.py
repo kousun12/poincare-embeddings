@@ -96,6 +96,7 @@ def train(model, inputs, outputs, learning_rate=tf.constant(0.1)):
         _loss = model.loss(pred, outputs)
     var_list = t.watched_variables()
     dEmb, *rest = t.gradient(_loss, var_list, None)
+    import ipdb; ipdb.set_trace()
     _apply_dense(inputs, model, dEmb, model.emb, learning_rate)
     # print(f'loss: {_loss}')
     return _loss

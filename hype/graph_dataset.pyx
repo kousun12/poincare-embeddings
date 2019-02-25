@@ -134,12 +134,13 @@ cdef class BatchedDataset:
             current = self.current
             self.current += self.batch_size
             # ix = torch.LongTensor(self.batch_size, self.nnegatives() + 2)
-            ix = tensorflow.random_uniform([self.batch_size, self.nnegatives() + 2], dtype=tensorflow.int64, maxval=tensorflow.int64.max)
+            ix = tensorflow.Variable(tensorflow.random_uniform([self.batch_size, self.nnegatives() + 2], dtype=tensorflow.int64, maxval=tensorflow.int64.max))
             memview = ix.numpy()
             with nogil:
                 count = self._getbatch(current, memview)
             if count < self.batch_size:
                 ix = tensorflow.strided_slice(ix, [0, 0], [self.idx.shape[0], count])
+            ix.assign(memview)
             self.queue.put((ix, tensorflow.zeros(ix.shape[0], dtype=tensorflow.int64)))
         self.queue.put(i)
 
