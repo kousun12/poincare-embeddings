@@ -8,6 +8,7 @@
 import tensorflow as tf
 
 tf.enable_eager_execution()
+import math
 from tensorflow.python.framework import ops
 from hype.tf_graph import train
 
@@ -172,18 +173,26 @@ def main():
 
         return gen
 
+    def exp_decay(epoch):
+        initial_rate = 0.45
+        k = 0.1
+        return max(initial_rate * math.exp(-k * epoch), 0.01)
+
     with tf.device("/cpu:0"):
-        num_epochs = 10
+        num_epochs = 500
         epochs = range(num_epochs)
         for epoch in epochs:
-            lr = ops.convert_to_tensor(0.01, name="learning_rate")
-            print(f'lr: {lr}')
+            lr = ops.convert_to_tensor(exp_decay(epoch), name="learning_rate", dtype=tf.float64)
+            b_ct = 0
+            loss_ag = 0
             for batch, (inputs, outputs) in enumerate(data):
-                current_loss = train(model, inputs, outputs, learning_rate=lr)
-            print(f'epoch {epoch} loss: {current_loss}')
+                b_ct += 1
+                loss_ag += train(model, inputs, outputs, learning_rate=lr)
+
+            print(f'epoch {epoch} - loss: {loss_ag / b_ct}, lr: {lr}]')
             # model.save(opt.checkpoint or "poincare.h5")
             model.save_weights(opt.checkpoint or "/tmp/hype_emb.tf")
-        print(model.summary)
+        print(model.summary())
     # model.fit(x_train, y_train, epochs=5)
 
     # # setup checkpoint

@@ -78,8 +78,8 @@ def load_edge_list(path, symmetrize=False):
 
 
 def _apply_dense(inputs, model, grad, var, lr_t):
-    idx_batch = tf.gather(inputs, [0], axis=1)
-    idx = tf.reshape(idx_batch, [idx_batch.shape[0]])
+    # idx_batch = tf.gather(inputs, [0], axis=1)
+    # idx = tf.reshape(idx_batch, [idx_batch.shape[0]])
     # import ipdb; ipdb.set_trace()
     # _msk = tf.tensor_scatter_add(-tf.ones_like(grad, grad.dtype), idx_batch, tf.ones_like(idx, dtype=grad.dtype))
     # indices = tf.constant([[0], [2]])
@@ -89,10 +89,10 @@ def _apply_dense(inputs, model, grad, var, lr_t):
     #                         [7, 7, 7, 7], [8, 8, 8, 8]]])
     # shape = tf.constant([4, 4, 4])
 
-    mask = tf.Variable(tf.ones_like(grad, dtype=grad.dtype))
-    _mmsk = tf.scatter_nd(idx, tf.tile(tf.ones_like(mask[0])), mask.shape)
-    mask = tf.assign(mask[idx], tf.zeros_like(mask[idx]))
-    grad = grad * mask
+    # mask = tf.Variable(tf.ones_like(grad, dtype=grad.dtype))
+    # _mmsk = tf.scatter_nd(idx, tf.tile(tf.ones_like(mask[0])), mask.shape)
+    # mask = tf.assign(mask[idx], tf.zeros_like(mask[idx]))
+    # grad = grad * mask
     d_p = model.manifold.rgrad(var, grad)
     update = model.manifold.expm(var, d_p, lr=lr_t)
     return var.assign(update)
