@@ -24,7 +24,7 @@ def pplot(names, embeddings, name="mammal"):
         x = c0
         y = c1
         ax.plot(x, y, "o", color="r")
-        ax.text(x - 0.1, y + 0.04, re.sub("\.n\.\d{2}", "", w), color="b")
+        ax.text(8 * x - 0.1, 8 * y + 0.04, re.sub("\.n\.\d{2}", "", w), color="b")
     fig.savefig("plots/" + name + ".png", dpi=fig.dpi)
 
 
@@ -39,5 +39,5 @@ if __name__ == "__main__":
         manifold, opt, idx, objects, weights, sparse=False
     )
     chpt = model.load_weights("mammals.tf")
-    pplot(objects[:400], model.emb.numpy(), "tf-mammals")
+    pplot(objects[:40], model.emb.numpy(), "tf-mammals")
     plt.show()

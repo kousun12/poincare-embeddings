@@ -10,7 +10,7 @@ from .euclidean import EuclideanManifold
 
 
 class PoincareManifold(EuclideanManifold):
-    def __init__(self, eps=1e-5, **kwargs):
+    def __init__(self, eps=1e-14, **kwargs):
         super(PoincareManifold, self).__init__(**kwargs)
         self.eps = eps
         self.boundary = 1 - eps

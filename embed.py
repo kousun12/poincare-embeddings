@@ -174,9 +174,9 @@ def main():
         return gen
 
     def exp_decay(epoch):
-        initial_rate = 0.45
-        k = 0.1
-        return max(initial_rate * math.exp(-k * epoch), 0.01)
+        initial_rate = 1.8
+        k = 0.05
+        return max(initial_rate * math.exp(-k * epoch), 0.3)
 
     with tf.device("/cpu:0"):
         num_epochs = 500
