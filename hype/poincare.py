@@ -38,11 +38,10 @@ class Distance:
 
     @staticmethod
     def forward(u, v, eps):
-        squnorm = tf.clip_by_value(tf.reduce_sum(u * u), clip_value_min=0, clip_value_max=1 - eps)
-        sqvnorm = tf.clip_by_value(tf.reduce_sum(v * v), clip_value_min=0, clip_value_max=1 - eps)
-        sqdist = tf.reduce_sum(tf.pow(u - v, 2))
+        squnorm = tf.clip_by_value(tf.reduce_sum(u * u, axis=-1), clip_value_min=0, clip_value_max=1 - eps)
+        sqvnorm = tf.clip_by_value(tf.reduce_sum(v * v, axis=-1), clip_value_min=0, clip_value_max=1 - eps)
+        sqdist = tf.reduce_sum(tf.pow(u - v, 2), axis=-1)
         x = sqdist / ((1 - squnorm) * (1 - sqvnorm)) * 2 + 1
-        # arcosh
         z = tf.sqrt(tf.pow(x, 2) - 1)
         return tf.log(x + z)
 

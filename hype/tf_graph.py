@@ -78,10 +78,20 @@ def load_edge_list(path, symmetrize=False):
 
 
 def _apply_dense(inputs, model, grad, var, lr_t):
-    idx = tf.gather(inputs, 0)
-    mask = tf.Variable(tf.ones_like(grad, dtype=grad.dtype))
-    mask = tf.assign(mask[idx], tf.zeros_like(mask[idx]))
+    idx_batch = tf.gather(inputs, [0], axis=1)
+    idx = tf.reshape(idx_batch, [idx_batch.shape[0]])
     # import ipdb; ipdb.set_trace()
+    # _msk = tf.tensor_scatter_add(-tf.ones_like(grad, grad.dtype), idx_batch, tf.ones_like(idx, dtype=grad.dtype))
+    # indices = tf.constant([[0], [2]])
+    # updates = tf.constant([[[5, 5, 5, 5], [6, 6, 6, 6],
+    #                         [7, 7, 7, 7], [8, 8, 8, 8]],
+    #                        [[5, 5, 5, 5], [6, 6, 6, 6],
+    #                         [7, 7, 7, 7], [8, 8, 8, 8]]])
+    # shape = tf.constant([4, 4, 4])
+
+    mask = tf.Variable(tf.ones_like(grad, dtype=grad.dtype))
+    _mmsk = tf.scatter_nd(idx, tf.tile(tf.ones_like(mask[0])), mask.shape)
+    mask = tf.assign(mask[idx], tf.zeros_like(mask[idx]))
     grad = grad * mask
     d_p = model.manifold.rgrad(var, grad)
     update = model.manifold.expm(var, d_p, lr=lr_t)
@@ -96,7 +106,6 @@ def train(model, inputs, outputs, learning_rate=tf.constant(0.1)):
         _loss = model.loss(pred, outputs)
     var_list = t.watched_variables()
     dEmb, *rest = t.gradient(_loss, var_list, None)
-    import ipdb; ipdb.set_trace()
     _apply_dense(inputs, model, dEmb, model.emb, learning_rate)
     # print(f'loss: {_loss}')
     return _loss
@@ -120,10 +129,11 @@ class Embedding(tf.keras.Model):
         self.dist = manifold.distance
         self.pre_hook = None
         self.post_hook = None
-        self.offset = tf.constant(0.000_001)
+        eps = 1e-6
+        self.offset = tf.constant(eps, dtype=tf.float64)
         scale = 1e-4
         self.emb = tf.Variable(
-            tf.random_uniform([size, dim], -scale, scale), name="emb"
+            tf.random_uniform([size, dim], -scale, scale, dtype=tf.float64), name="emb"
         )
 
     def _forward(self, x):
@@ -131,8 +141,8 @@ class Embedding(tf.keras.Model):
 
     def loss(self, actual, expected):
         # tf.losses.softmax_cross_entropy(expected, actual)
-        _exp = tf.cast(expected, actual.dtype) + self.offset
-        return tf.reduce_mean(-tf.reduce_sum(_exp * tf.log(actual)))
+        _exp = expected + self.offset
+        return tf.reduce_mean(-tf.reduce_sum(tf.reshape(_exp, [actual.shape[0], 1]) * tf.log(actual), axis=-1))
         # tf.nn.softmax_cross_entropy_with_logits(labels=expected, logits=actual)
         # return tf.reduce_mean(tf.square(tf.cast(expected, dtype='float32') - actual))
 

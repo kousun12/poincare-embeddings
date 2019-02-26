@@ -141,7 +141,7 @@ cdef class BatchedDataset:
             if count < self.batch_size:
                 ix = tensorflow.strided_slice(ix, [0, 0], [self.idx.shape[0], count])
             ix.assign(memview)
-            self.queue.put((ix, tensorflow.zeros(ix.shape[0], dtype=tensorflow.int64)))
+            self.queue.put((ix, tensorflow.zeros(ix.shape[0], dtype=tensorflow.float64)))
         self.queue.put(i)
 
     def iter(self):
